@@ -1,0 +1,34 @@
+library(tidyverse)
+library(cluster)
+library(factoextra)
+library(GGally)
+
+
+football_numeric <- football %>%
+  select(Goals, `Shots on target`, Appearances, Conversion_rate)
+
+football_numeric <- football_numeric %>%
+  mutate(across(everything(), ~replace_na(., mean(., na.rm = TRUE))))
+
+football_scaled <- scale(football_numeric)
+
+kmeans_result <- kmeans(football_scaled, centers = 4, nstart = 25)
+
+football$cluster <- factor(kmeans_result$cluster, labels = c("Goal Scorers", "Unkownss", "Seasoned Stars", "Average Players"))
+
+football %>% glimpse()
+
+avg_goals_per_cluster <- football %>%
+  group_by(cluster) %>%
+  summarise(avg_goals_per_appearance = mean(Goals_per_Appearance))
+
+avg_goals_per_cluster %>% glimpse()
+
+ggplot(football, aes(x = Appearances, y = Goals_per_Appearance, color = cluster)) +
+  geom_point() +
+  labs(title = "Appearances vs Goals per", x = "Appearances", y = "Goals per Appearance")
+
+ggpairs(football, columns = c("Goals", "Appearances", "Goals_per_Appearance"), aes(color = cluster))
+
+sil_scores <- silhouette(kmeans_result$cluster, dist(football_scaled))
+summary(sil_scores)
